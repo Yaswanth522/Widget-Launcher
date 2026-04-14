@@ -30,14 +30,14 @@ export async function injectEmbedScripts(
   const scripts = Array.from(doc.body.querySelectorAll('script'))
 
   if (scripts.length === 0) {
-    return { ok: false, error: 'No script tags found. Paste at least one <script>.' }
+    return { ok: false, error: 'Add at least one script tag.' }
   }
 
   for (const source of scripts) {
     try {
       await appendScriptFromParsed(source)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Script failed to run.'
+      const message = e instanceof Error ? e.message : 'Could not run embed.'
       return { ok: false, error: message }
     }
   }
@@ -56,7 +56,7 @@ function appendScriptFromParsed(source: HTMLScriptElement): Promise<void> {
       el.async = false
       el.onload = () => resolve()
       el.onerror = () =>
-        reject(new Error(`Failed to load script: ${source.src}`))
+        reject(new Error(`Could not load: ${source.src}`))
       document.body.appendChild(el)
       injectedScripts.push(el)
       return

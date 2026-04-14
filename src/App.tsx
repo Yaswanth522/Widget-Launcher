@@ -14,7 +14,7 @@ function ConfigureFab({ onClick }: { onClick: () => void }) {
         type="button"
         onClick={onClick}
         className="group relative flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/90 text-[#1a1a1a] shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm transition hover:bg-white"
-        aria-label="Configure widget"
+        aria-label="Open settings"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +40,7 @@ function ConfigureFab({ onClick }: { onClick: () => void }) {
           className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-10 max-w-[min(calc(100vw-5rem),14rem)] -translate-y-1/2 rounded-lg border border-[#d8dce5] bg-white/95 px-3 py-2 text-left text-xs font-medium text-[#333] opacity-0 shadow-md backdrop-blur-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 max-sm:sr-only"
           role="tooltip"
         >
-          Configure widget
+          Settings
         </span>
       </button>
     </div>
@@ -119,9 +119,9 @@ function App() {
 
   const shellClass = immersive
     ? configureOpen
-      ? 'fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/45 p-4 backdrop-blur-[2px]'
+      ? 'fixed inset-0 z-[99999] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/45 p-2 sm:p-4 backdrop-blur-[2px]'
       : 'hidden'
-    : 'relative z-[2] flex min-h-[100dvh] w-full items-center justify-center overflow-x-hidden px-8 py-8'
+    : 'relative z-[2] flex min-h-[100dvh] w-full items-center justify-center overflow-x-hidden px-3 py-6 sm:px-8 sm:py-8'
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-x-hidden">
@@ -142,8 +142,8 @@ function App() {
         <div
           className={
             immersive && configureOpen
-              ? 'my-auto w-full max-w-xl shrink-0'
-              : 'w-full max-w-xl'
+              ? 'flex w-full max-w-none shrink-0 justify-center'
+              : 'flex w-full justify-center'
           }
           onClick={
             immersive && configureOpen

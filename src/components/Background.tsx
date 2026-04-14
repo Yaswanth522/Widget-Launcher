@@ -1,5 +1,5 @@
 type BackgroundProps = {
-  /** Full-viewport cover image (object-fit: cover behavior via CSS). */
+  /** Fits the full image inside the viewport (letterboxing as needed). */
   coverUrl?: string | null
 }
 
@@ -7,7 +7,7 @@ export function Background({ coverUrl }: BackgroundProps) {
   if (coverUrl) {
     return (
       <div
-        className="pointer-events-none fixed inset-0 z-0 min-h-[100dvh] w-full bg-cover bg-center bg-no-repeat"
+        className="pointer-events-none fixed inset-0 z-0 min-h-[100dvh] w-full bg-[#e8eaef] bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${coverUrl})` }}
         aria-hidden
       />
