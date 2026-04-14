@@ -99,7 +99,7 @@ export function LauncherForm() {
               onClick={() => setMinimized(false)}
               className="rounded-xl border border-[#c5ccd8] bg-white/90 px-4 py-2 text-sm font-medium text-[#333] shadow-sm transition hover:bg-white"
             >
-              Show setup
+              Expand
             </button>
             <button
               type="button"
@@ -123,9 +123,20 @@ export function LauncherForm() {
 
   return (
     <div className="animate-panel-in w-full max-w-xl rounded-2xl border border-white/90 bg-white/70 px-8 py-9 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-[12px]">
-      <h1 className="mb-3 text-[1.35rem] font-semibold tracking-tight text-[#1a1a1a]">
-        {brandName?.trim() ? brandName.trim() : 'Welcome'}
-      </h1>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h1 className="text-[1.35rem] font-semibold tracking-tight text-[#1a1a1a]">
+          {brandName?.trim() ? brandName.trim() : 'Welcome'}
+        </h1>
+        {launched && !injectError && (
+          <button
+            type="button"
+            onClick={() => setMinimized(true)}
+            className="shrink-0 rounded-xl border border-[#c5ccd8] bg-white/90 px-3 py-1.5 text-sm font-medium text-[#333] shadow-sm transition hover:bg-white"
+          >
+            Minimize
+          </button>
+        )}
+      </div>
       <p className="text-[0.95rem] leading-relaxed text-[#444]">
         Enter your brand name and paste the embed scripts your provider gave
         you. Launch runs them on this page so the widget can appear—use only
