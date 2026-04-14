@@ -1,8 +1,23 @@
-export function Background() {
+type BackgroundProps = {
+  /** Full-viewport cover image (object-fit: cover behavior via CSS). */
+  coverUrl?: string | null
+}
+
+export function Background({ coverUrl }: BackgroundProps) {
+  if (coverUrl) {
+    return (
+      <div
+        className="pointer-events-none fixed inset-0 z-0 min-h-[100dvh] w-full bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${coverUrl})` }}
+        aria-hidden
+      />
+    )
+  }
+
   return (
     <>
       <div
-        className="animate-bg-shift pointer-events-none fixed inset-0 z-0"
+        className="animate-bg-shift pointer-events-none fixed inset-0 z-0 min-h-[100dvh] w-full"
         aria-hidden
       />
       <div
