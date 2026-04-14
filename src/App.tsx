@@ -13,7 +13,7 @@ function ConfigureFab({ onClick }: { onClick: () => void }) {
       <button
         type="button"
         onClick={onClick}
-        className="group relative flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/90 text-[#1a1a1a] shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm transition hover:bg-white"
+        className="group relative flex h-12 w-12 items-center justify-center rounded-full border border-white/90 bg-white/95 text-[#1a1a1a] shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition hover:bg-white"
         aria-label="Open settings"
       >
         <svg
@@ -119,7 +119,7 @@ function App() {
 
   const shellClass = immersive
     ? configureOpen
-      ? 'fixed inset-0 z-[99999] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/45 p-2 sm:p-4 backdrop-blur-[2px]'
+      ? 'fixed inset-0 z-[99999] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/40 p-2 sm:p-4'
       : 'hidden'
     : 'relative z-[2] flex min-h-[100dvh] w-full items-center justify-center overflow-x-hidden px-3 py-6 sm:px-8 sm:py-8'
 
@@ -159,6 +159,7 @@ function App() {
             hasCoverImage={immersive}
             configureModalOpen={immersive && configureOpen}
             onCloseConfigure={() => setConfigureOpen(false)}
+            onEnterPostLaunchChrome={() => setConfigureOpen(false)}
           />
         </div>
       </div>

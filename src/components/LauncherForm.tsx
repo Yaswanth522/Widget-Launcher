@@ -34,6 +34,8 @@ export type LauncherFormProps = {
   hasCoverImage: boolean
   configureModalOpen: boolean
   onCloseConfigure?: () => void
+  /** Called after a successful launch when the parent should leave modal / gear-only UI (e.g. close overlay). */
+  onEnterPostLaunchChrome?: () => void
 }
 
 function BackgroundModeToggle({
@@ -79,13 +81,19 @@ function BackgroundModeToggle({
   )
 }
 
-function CloseIconButton({ onClick }: { onClick: () => void }) {
+function CloseIconButton({
+  onClick,
+  label = 'Close',
+}: {
+  onClick: () => void
+  label?: string
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#d8dce5] bg-white/95 text-[#444] shadow-sm transition hover:bg-white hover:text-[#111]"
-      aria-label="Close"
+      aria-label={label}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -114,6 +122,7 @@ export function LauncherForm({
   hasCoverImage,
   configureModalOpen,
   onCloseConfigure,
+  onEnterPostLaunchChrome,
 }: LauncherFormProps) {
   const [launched, setLaunched] = useState(false)
   const [minimized, setMinimized] = useState(false)
@@ -125,6 +134,10 @@ export function LauncherForm({
   useEffect(() => {
     document.title = documentTitle
   }, [documentTitle])
+
+  useEffect(() => {
+    if (configureModalOpen) setMinimized(false)
+  }, [configureModalOpen])
 
   const {
     register,
@@ -155,6 +168,9 @@ export function LauncherForm({
     }
     setLaunched(true)
     setMinimized(true)
+    if (hasCoverImage) {
+      onEnterPostLaunchChrome?.()
+    }
   }
 
   const onReset = () => {
@@ -164,13 +180,17 @@ export function LauncherForm({
     setMinimized(false)
     reset(emptyDefaults)
     setDocumentTitle('Widget Launcher')
+    if (hasCoverImage) {
+      onCloseConfigure?.()
+    }
   }
 
   const onReloadPage = () => {
     window.location.reload()
   }
 
-  const showMinimized = launched && !injectError && minimized
+  const showMinimized =
+    launched && !injectError && minimized && !hasCoverImage
 
   if (showMinimized) {
     return (
@@ -183,13 +203,10 @@ export function LauncherForm({
             <p className="text-sm text-[#2d6a4f]">Widget is running.</p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <button
-              type="button"
+            <CloseIconButton
+              label="Back to editor"
               onClick={() => setMinimized(false)}
-              className="rounded-xl border border-[#c5ccd8] bg-white/90 px-4 py-2 text-sm font-medium text-[#333] shadow-sm transition hover:bg-white"
-            >
-              Expand
-            </button>
+            />
             <button
               type="button"
               onClick={onReset}
