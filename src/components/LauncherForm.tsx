@@ -84,14 +84,17 @@ function BackgroundModeToggle({
 function CloseIconButton({
   onClick,
   label = 'Close',
+  title: titleProp,
 }: {
   onClick: () => void
   label?: string
+  title?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      title={titleProp ?? label}
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#d8dce5] bg-white/95 text-[#444] shadow-sm transition hover:bg-white hover:text-[#111]"
       aria-label={label}
     >
@@ -108,6 +111,34 @@ function CloseIconButton({
           strokeLinecap="round"
           strokeLinejoin="round"
           d="M6 18 18 6M6 6l12 12"
+        />
+      </svg>
+    </button>
+  )
+}
+
+function ExpandToEditorButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#d8dce5] bg-white/95 text-[#444] shadow-sm transition hover:bg-white hover:text-[#111]"
+      aria-label="Expand editor"
+      title="Back to full editor"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={2}
+        stroke="currentColor"
+        aria-hidden
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"
         />
       </svg>
     </button>
@@ -203,10 +234,7 @@ export function LauncherForm({
             <p className="text-sm text-[#2d6a4f]">Widget is running.</p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <CloseIconButton
-              label="Back to editor"
-              onClick={() => setMinimized(false)}
-            />
+            <ExpandToEditorButton onClick={() => setMinimized(false)} />
             <button
               type="button"
               onClick={onReset}
@@ -244,13 +272,11 @@ export function LauncherForm({
         </h1>
         <div className="flex shrink-0 items-center gap-2">
           {launched && !injectError && !configureModalOpen && (
-            <button
-              type="button"
+            <CloseIconButton
+              label="Minimize"
+              title="Minimize to banner"
               onClick={() => setMinimized(true)}
-              className="rounded-xl border border-[#c5ccd8] bg-white/90 px-3 py-1.5 text-sm font-medium text-[#333] shadow-sm transition hover:bg-white"
-            >
-              Minimize
-            </button>
+            />
           )}
           {configureModalOpen && onCloseConfigure && (
             <CloseIconButton onClick={onCloseConfigure} />
