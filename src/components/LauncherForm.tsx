@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { clearInjectedScripts, injectEmbedScripts } from '../lib/injectScripts'
+import { clearForm, clearLaunch, loadSession, saveForm, saveLaunch } from '../lib/sessionStore'
 
 export type BackgroundMode = 'default' | 'upload'
 
@@ -155,12 +156,19 @@ export function LauncherForm({
   onCloseConfigure,
   onEnterPostLaunchChrome,
 }: LauncherFormProps) {
-  const [launched, setLaunched] = useState(false)
-  const [minimized, setMinimized] = useState(false)
+  const session = loadSession()
+  const [launched, setLaunched] = useState(session.launched)
+  const [minimized, setMinimized] = useState(session.minimized)
   const [injectError, setInjectError] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
-  const [documentTitle, setDocumentTitle] = useState('Widget Launcher')
+  const [pending, setPending] = useState(session.launched)
+  const [documentTitle, setDocumentTitle] = useState(
+    session.launched && session.brandName.trim()
+      ? session.brandName.trim()
+      : 'Widget Launcher',
+  )
   const fileInputId = useId()
+  const replayedRef = useRef(false)
+  const runTokenRef = useRef(0)
 
   useEffect(() => {
     document.title = documentTitle
@@ -175,42 +183,74 @@ export function LauncherForm({
     handleSubmit,
     reset,
     control,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: emptyDefaults,
+    defaultValues: { brandName: session.brandName, embedCode: session.embedCode },
   })
 
   const brandName = useWatch({ control, name: 'brandName' }) ?? ''
 
-  const onSubmit = async (data: FormValues) => {
+  useEffect(() => {
+    const { unsubscribe } = watch((values) => {
+      saveForm({
+        brandName: values.brandName ?? '',
+        embedCode: values.embedCode ?? '',
+      })
+    })
+    return () => unsubscribe()
+  }, [watch])
+
+  const attemptLaunch = async (data: FormValues) => {
+    const token = ++runTokenRef.current
     setInjectError(null)
     setPending(true)
     clearInjectedScripts()
     setDocumentTitle(data.brandName.trim())
     const result = await injectEmbedScripts(data.embedCode)
+    // A Reset (or a newer launch) may have started while this was in flight —
+    // bail out without touching state so we can't resurrect what was just cleared.
+    if (token !== runTokenRef.current) return
     setPending(false)
     if (!result.ok) {
       setInjectError(result.error)
       setLaunched(false)
       setMinimized(false)
       setDocumentTitle('Widget Launcher')
+      saveLaunch({ launched: false, minimized: false })
       return
     }
     setLaunched(true)
     setMinimized(true)
+    saveLaunch({ launched: true, minimized: true })
     if (hasCoverImage) {
       onEnterPostLaunchChrome?.()
     }
   }
 
+  const onSubmit = (data: FormValues) => attemptLaunch(data)
+
+  useEffect(() => {
+    if (replayedRef.current) return
+    replayedRef.current = true
+    if (!session.launched) return
+    void attemptLaunch({ brandName: session.brandName, embedCode: session.embedCode })
+    // Runs once on mount to resurrect the widget DOM/globals a refresh wiped —
+    // the guard above keeps StrictMode's double-invoke from racing two launches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const onReset = () => {
+    runTokenRef.current++
     clearInjectedScripts()
     setInjectError(null)
     setLaunched(false)
     setMinimized(false)
     reset(emptyDefaults)
     setDocumentTitle('Widget Launcher')
+    clearForm()
+    clearLaunch()
     if (hasCoverImage) {
       onCloseConfigure?.()
     }
@@ -231,7 +271,9 @@ export function LauncherForm({
             <p className="truncate text-base font-semibold tracking-tight text-[#1a1a1a]">
               {brandName.trim() || 'Widget'}
             </p>
-            <p className="text-sm text-[#2d6a4f]">Widget is running.</p>
+            <p className="text-sm text-[#2d6a4f]">
+              {pending ? 'Restoring…' : 'Widget is running.'}
+            </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <ExpandToEditorButton onClick={() => setMinimized(false)} />
@@ -404,7 +446,11 @@ export function LauncherForm({
           )}
 
           {launched && !injectError && !minimized && (
-            <p className="text-sm text-[#2d6a4f]">Launched—check for the widget control.</p>
+            <p className="text-sm text-[#2d6a4f]">
+              {pending
+                ? 'Restoring—check for the widget control.'
+                : 'Launched—check for the widget control.'}
+            </p>
           )}
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">

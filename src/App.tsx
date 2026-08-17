@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Background } from './components/Background'
 import {
   LauncherForm,
   type BackgroundMode,
 } from './components/LauncherForm'
+import { deleteImage, getImage, putImage, sweepOlderThan } from './lib/imageStore'
+import { loadSession, saveBackground } from './lib/sessionStore'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
@@ -48,36 +50,59 @@ function ConfigureFab({ onClick }: { onClick: () => void }) {
 }
 
 function App() {
-  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('default')
+  const session = loadSession()
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>(
+    session.backgroundMode,
+  )
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(!session.hasCoverImage)
   const [backgroundFileError, setBackgroundFileError] = useState<string | null>(
     null,
   )
   const [configureOpen, setConfigureOpen] = useState(false)
+  const uploadTokenRef = useRef(0)
 
   const immersive = coverUrl !== null
 
-  const revokeCoverUrl = useCallback((url: string | null) => {
-    if (url) URL.revokeObjectURL(url)
+  useEffect(() => {
+    sweepOlderThan().catch(() => {
+      /* best-effort hygiene only */
+    })
   }, [])
 
   useEffect(() => {
-    return () => revokeCoverUrl(coverUrl)
-  }, [coverUrl, revokeCoverUrl])
+    if (hydrated) return
+    let cancelled = false
+    getImage(session.sessionId)
+      .then((dataUrl) => {
+        if (cancelled) return
+        setCoverUrl(dataUrl)
+        setHydrated(true)
+      })
+      .catch(() => {
+        if (!cancelled) setHydrated(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated, session.sessionId])
 
   const handleBackgroundModeChange = useCallback(
     (mode: BackgroundMode) => {
       setBackgroundMode(mode)
       setBackgroundFileError(null)
       if (mode === 'default') {
-        setCoverUrl((prev) => {
-          revokeCoverUrl(prev)
-          return null
-        })
+        setCoverUrl(null)
         setConfigureOpen(false)
+        saveBackground({ backgroundMode: 'default', hasCoverImage: false })
+        deleteImage(session.sessionId).catch(() => {
+          /* orphaned rows are swept later */
+        })
+      } else {
+        saveBackground({ backgroundMode: 'upload', hasCoverImage: coverUrl !== null })
       }
     },
-    [revokeCoverUrl],
+    [coverUrl, session.sessionId],
   )
 
   const handleBackgroundFile = useCallback(
@@ -91,12 +116,30 @@ function App() {
         return
       }
       setBackgroundFileError(null)
-      setCoverUrl((prev) => {
-        revokeCoverUrl(prev)
-        return URL.createObjectURL(file)
-      })
+      const token = ++uploadTokenRef.current
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (token !== uploadTokenRef.current) return
+        const dataUrl = reader.result
+        if (typeof dataUrl !== 'string') return
+        setCoverUrl(dataUrl)
+        saveBackground({ backgroundMode: 'upload', hasCoverImage: true })
+        putImage(session.sessionId, dataUrl).catch(() => {
+          if (token === uploadTokenRef.current) {
+            setBackgroundFileError(
+              "Background saved for now, but it won't survive a refresh.",
+            )
+          }
+        })
+      }
+      reader.onerror = () => {
+        if (token === uploadTokenRef.current) {
+          setBackgroundFileError('Could not read that image.')
+        }
+      }
+      reader.readAsDataURL(file)
     },
-    [revokeCoverUrl],
+    [session.sessionId],
   )
 
   useEffect(() => {
@@ -122,6 +165,12 @@ function App() {
       ? 'fixed inset-0 z-[99999] flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/40 p-2 sm:p-4'
       : 'hidden'
     : 'relative z-[2] flex min-h-[100dvh] w-full items-center justify-center overflow-x-hidden px-3 py-6 sm:px-8 sm:py-8'
+
+  if (!hydrated) {
+    // Holding first paint here avoids a visible flash between the minimized
+    // banner and the full-bleed background while the restored image loads.
+    return <div className="relative min-h-[100dvh] w-full bg-[#e8eaef]" />
+  }
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-x-hidden">

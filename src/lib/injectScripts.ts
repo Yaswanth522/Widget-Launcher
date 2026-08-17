@@ -2,6 +2,14 @@
 const LAUNCHER_SCRIPT_ATTR = 'data-widget-launcher-embed'
 
 /**
+ * Incremented at the start of every `injectEmbedScripts` call. A run's async
+ * tail (settle-tagging, error teardown) checks this before touching the DOM,
+ * so a superseded run (e.g. React StrictMode's double-invoked mount effect)
+ * can't tear down or mis-tag a newer run's scripts.
+ */
+let injectGeneration = 0
+
+/**
  * Vendors like Yellow.ai keep globals and DOM after `<script>` removal.
  * Tear those down before the next inject so an edited snippet does not stack
  * on top of the previous widget.
@@ -90,18 +98,24 @@ function tagScriptsAddedSince(original: Set<Element>): void {
 /**
  * Vendors often append `<script src>` on a later task; re-scan a few times so those get tagged too.
  */
-async function tagNewEmbedScriptsWithSettling(original: Set<Element>): Promise<void> {
-  tagScriptsAddedSince(original)
+async function tagNewEmbedScriptsWithSettling(
+  original: Set<Element>,
+  generation: number,
+): Promise<void> {
+  const tagIfCurrent = () => {
+    if (generation === injectGeneration) tagScriptsAddedSince(original)
+  }
+  tagIfCurrent()
   await Promise.resolve()
-  tagScriptsAddedSince(original)
+  tagIfCurrent()
   await new Promise<void>((r) => queueMicrotask(r))
-  tagScriptsAddedSince(original)
+  tagIfCurrent()
   await new Promise<void>((r) => setTimeout(r, 0))
-  tagScriptsAddedSince(original)
+  tagIfCurrent()
   await new Promise<void>((r) => setTimeout(r, 50))
-  tagScriptsAddedSince(original)
+  tagIfCurrent()
   await new Promise<void>((r) => setTimeout(r, 200))
-  tagScriptsAddedSince(original)
+  tagIfCurrent()
 }
 
 function removeExistingScriptsWithSameAbsoluteSrc(resolvedSrc: string): void {
@@ -122,6 +136,7 @@ function removeExistingScriptsWithSameAbsoluteSrc(resolvedSrc: string): void {
 }
 
 export function clearInjectedScripts(): void {
+  injectGeneration++
   stripInjectedEmbedFromDocument()
 }
 
@@ -145,6 +160,7 @@ function cloneScriptAttributes(
 export async function injectEmbedScripts(
   html: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const generation = ++injectGeneration
   stripInjectedEmbedFromDocument()
   const scriptsBeforeThisLaunch = snapshotScripts()
 
@@ -157,16 +173,19 @@ export async function injectEmbedScripts(
   }
 
   for (const source of scripts) {
+    if (generation !== injectGeneration) {
+      return { ok: false, error: 'Superseded by a newer action.' }
+    }
     try {
       await appendScriptFromParsed(source)
     } catch (e) {
-      stripInjectedEmbedFromDocument()
+      if (generation === injectGeneration) stripInjectedEmbedFromDocument()
       const message = e instanceof Error ? e.message : 'Could not run embed.'
       return { ok: false, error: message }
     }
   }
 
-  await tagNewEmbedScriptsWithSettling(scriptsBeforeThisLaunch)
+  await tagNewEmbedScriptsWithSettling(scriptsBeforeThisLaunch, generation)
 
   return { ok: true }
 }
